@@ -21,3 +21,8 @@ onlyBuiltDependencies: []
 # cookie 0.6.0 (GHSA-pxg6-pf52-xh8x). 0.7.2 ist API-kompatibel und gepatcht.
 overrides:
   cookie: 0.7.2
+  # drizzle-kit zieht über die veralteten @esbuild-kit/*-Pakete ein anfälliges
+  # esbuild 0.18.x (GHSA-67mh-4wv8-2f99, Dev-Server). Gezielt nur an dieser Stelle
+  # auf 0.25.x heben – vite bringt sein eigenes (bereits gepatchtes) esbuild mit,
+  # das davon unberührt bleibt.
+  '@esbuild-kit/core-utils>esbuild': ^0.25.0
