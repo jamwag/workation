@@ -6,8 +6,7 @@ import { requireWorkationAccess } from '$lib/server/workations';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
-	const { workation, isManager } = await requireWorkationAccess(event, event.params.id);
-
+	// Zugriff ist bereits im +layout.server.ts geprüft.
 	const members = await db
 		.select({
 			memberId: table.workationMember.id,
@@ -17,10 +16,10 @@ export const load: PageServerLoad = async (event) => {
 		})
 		.from(table.workationMember)
 		.innerJoin(table.user, eq(table.workationMember.userId, table.user.id))
-		.where(eq(table.workationMember.workationId, workation.id))
+		.where(eq(table.workationMember.workationId, event.params.id))
 		.orderBy(table.user.username);
 
-	return { workation, members, isManager };
+	return { members };
 };
 
 export const actions: Actions = {

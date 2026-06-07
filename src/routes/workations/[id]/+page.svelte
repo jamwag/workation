@@ -1,22 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { formatDateRange } from '$lib/format';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 </script>
 
 <svelte:head>
-	<title>{data.workation.name}</title>
+	<title>{data.workation.name} · Mitglieder</title>
 </svelte:head>
-
-<div class="head">
-	<div>
-		<h1>{data.workation.name}</h1>
-		<p class="muted">{formatDateRange(data.workation.startDate, data.workation.endDate)}</p>
-	</div>
-	<a href="/workations">← Übersicht</a>
-</div>
 
 <section class="card">
 	<h2>Mitglieder</h2>
@@ -58,21 +49,6 @@
 </section>
 
 <style>
-	.head {
-		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: 1rem;
-	}
-	.head h1 {
-		margin-bottom: 0.25rem;
-	}
-	.head p {
-		margin: 0;
-	}
-	section {
-		margin-top: 1.5rem;
-	}
 	.members {
 		list-style: none;
 		padding: 0;
