@@ -12,23 +12,22 @@ import { requireLogin } from '$lib/server/auth-guard';
 export async function requireWorkationAccess(event: RequestEvent, workationId: string) {
 	const user = requireLogin(event);
 
-	const [workation] = await db
-		.select()
-		.from(table.workation)
-		.where(eq(table.workation.id, workationId));
+	// Beide Abfragen sind unabhängig -> parallel ausführen (spart einen Netzwerk-Roundtrip).
+	const [[workation], [membership]] = await Promise.all([
+		db.select().from(table.workation).where(eq(table.workation.id, workationId)),
+		db
+			.select()
+			.from(table.workationMember)
+			.where(
+				and(
+					eq(table.workationMember.workationId, workationId),
+					eq(table.workationMember.userId, user.id)
+				)
+			)
+	]);
 	if (!workation) {
 		error(404, 'Workation nicht gefunden.');
 	}
-
-	const [membership] = await db
-		.select()
-		.from(table.workationMember)
-		.where(
-			and(
-				eq(table.workationMember.workationId, workationId),
-				eq(table.workationMember.userId, user.id)
-			)
-		);
 
 	const isCreator = workation.createdById === user.id;
 	const isMember = membership?.status === 'accepted';

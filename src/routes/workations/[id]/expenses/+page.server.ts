@@ -3,56 +3,59 @@ import { and, desc, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { requireWorkationAccess } from '$lib/server/workations';
+import { requireLogin } from '$lib/server/auth-guard';
 import { splitAmountCents } from '$lib/money';
 import type { Actions, PageServerLoad } from './$types';
 
 const MAX_RECEIPT_BYTES = 2_000_000; // Sicherheitsgrenze nach Client-Komprimierung
 
 export const load: PageServerLoad = async (event) => {
-	const { user } = await requireWorkationAccess(event, event.params.id);
+	// Zugriff ist bereits im +layout.server.ts geprüft -> hier kein zusätzlicher Roundtrip.
+	const user = requireLogin(event);
 	const workationId = event.params.id;
 
-	const members = await db
-		.select({
-			id: table.user.id,
-			username: table.user.username,
-			paypalHandle: table.user.paypalHandle
-		})
-		.from(table.workationMember)
-		.innerJoin(table.user, eq(table.workationMember.userId, table.user.id))
-		.where(
-			and(
-				eq(table.workationMember.workationId, workationId),
-				eq(table.workationMember.status, 'accepted')
+	// Drei unabhängige Abfragen parallel statt nacheinander (spart 2 Netzwerk-Roundtrips).
+	const [members, expenses, shares] = await Promise.all([
+		db
+			.select({
+				id: table.user.id,
+				username: table.user.username,
+				paypalHandle: table.user.paypalHandle
+			})
+			.from(table.workationMember)
+			.innerJoin(table.user, eq(table.workationMember.userId, table.user.id))
+			.where(
+				and(
+					eq(table.workationMember.workationId, workationId),
+					eq(table.workationMember.status, 'accepted')
+				)
 			)
-		)
-		.orderBy(table.user.username);
-
-	const expenses = await db
-		.select({
-			id: table.expense.id,
-			paidById: table.expense.paidById,
-			paidByName: table.user.username,
-			description: table.expense.description,
-			amountCents: table.expense.amountCents,
-			currency: table.expense.currency,
-			receiptMimeType: table.expense.receiptMimeType,
-			createdAt: table.expense.createdAt
-		})
-		.from(table.expense)
-		.innerJoin(table.user, eq(table.expense.paidById, table.user.id))
-		.where(eq(table.expense.workationId, workationId))
-		.orderBy(desc(table.expense.createdAt));
-
-	const shares = await db
-		.select({
-			expenseId: table.expenseShare.expenseId,
-			userId: table.expenseShare.userId,
-			amountCents: table.expenseShare.amountCents
-		})
-		.from(table.expenseShare)
-		.innerJoin(table.expense, eq(table.expenseShare.expenseId, table.expense.id))
-		.where(eq(table.expense.workationId, workationId));
+			.orderBy(table.user.username),
+		db
+			.select({
+				id: table.expense.id,
+				paidById: table.expense.paidById,
+				paidByName: table.user.username,
+				description: table.expense.description,
+				amountCents: table.expense.amountCents,
+				currency: table.expense.currency,
+				receiptMimeType: table.expense.receiptMimeType,
+				createdAt: table.expense.createdAt
+			})
+			.from(table.expense)
+			.innerJoin(table.user, eq(table.expense.paidById, table.user.id))
+			.where(eq(table.expense.workationId, workationId))
+			.orderBy(desc(table.expense.createdAt)),
+		db
+			.select({
+				expenseId: table.expenseShare.expenseId,
+				userId: table.expenseShare.userId,
+				amountCents: table.expenseShare.amountCents
+			})
+			.from(table.expenseShare)
+			.innerJoin(table.expense, eq(table.expenseShare.expenseId, table.expense.id))
+			.where(eq(table.expense.workationId, workationId))
+	]);
 
 	// Netto-Salden des aktuellen Nutzers gegenüber jeder anderen Person berechnen.
 	const paidByOf = new Map(expenses.map((e) => [e.id, e.paidById]));
