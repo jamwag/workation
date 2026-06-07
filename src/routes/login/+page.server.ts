@@ -3,6 +3,7 @@ import { count, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import * as auth from '$lib/server/auth';
+import { isUniqueViolation } from '$lib/server/db/errors';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
@@ -67,12 +68,16 @@ export const actions: Actions = {
 		const [{ total }] = await db.select({ total: count() }).from(table.user);
 		const role = total === 0 ? 'admin' : 'member';
 
-		// Insert separat absichern: der unique-Constraint auf username wirft bei Dubletten.
+		// Insert separat absichern: nur eine echte unique-Verletzung als "vergeben" werten,
+		// andere DB-Fehler durchreichen (sonst würden z. B. Schemafehler maskiert).
 		// Wichtig: redirect() steht AUSSERHALB des try/catch, sonst würde es fälschlich gefangen.
 		try {
 			await db.insert(table.user).values({ id: userId, username, passwordHash, role });
-		} catch {
-			return fail(400, { message: 'Benutzername ist bereits vergeben' });
+		} catch (e) {
+			if (isUniqueViolation(e)) {
+				return fail(400, { message: 'Benutzername ist bereits vergeben' });
+			}
+			throw e;
 		}
 
 		const token = auth.generateSessionToken();

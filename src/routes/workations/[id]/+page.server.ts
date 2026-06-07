@@ -3,6 +3,7 @@ import { and, eq, ne } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { requireWorkationAccess } from '$lib/server/workations';
+import { isUniqueViolation } from '$lib/server/db/errors';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
@@ -49,8 +50,11 @@ export const actions: Actions = {
 				userId: invitee.id,
 				status: 'invited'
 			});
-		} catch {
-			return fail(400, { message: 'Dieser Nutzer ist bereits eingeladen oder Mitglied.' });
+		} catch (e) {
+			if (isUniqueViolation(e)) {
+				return fail(400, { message: 'Dieser Nutzer ist bereits eingeladen oder Mitglied.' });
+			}
+			throw e;
 		}
 		return { invited: username };
 	},
