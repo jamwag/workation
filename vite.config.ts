@@ -4,6 +4,11 @@ import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
 	plugins: [sveltekit()],
+	// @lucide/svelte liefert rohe .svelte-Dateien aus; im Dev-SSR muss Vite sie
+	// transformieren statt sie zu externalisieren (sonst kann Node sie nicht laden).
+	ssr: {
+		noExternal: ['@lucide/svelte']
+	},
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

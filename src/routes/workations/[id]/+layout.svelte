@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { Users, CalendarDays, Receipt } from '@lucide/svelte';
 	import { formatDateRange } from '$lib/format';
 	import type { LayoutProps } from './$types';
 
@@ -9,9 +10,19 @@
 	let path = $derived(page.url.pathname);
 
 	let tabs = $derived([
-		{ href: base, label: 'Mitglieder', active: path === base },
-		{ href: `${base}/schedule`, label: 'Tagesplan', active: path === `${base}/schedule` },
-		{ href: `${base}/expenses`, label: 'Ausgaben', active: path.startsWith(`${base}/expenses`) }
+		{ href: base, label: 'Mitglieder', icon: Users, active: path === base },
+		{
+			href: `${base}/schedule`,
+			label: 'Tagesplan',
+			icon: CalendarDays,
+			active: path === `${base}/schedule`
+		},
+		{
+			href: `${base}/expenses`,
+			label: 'Ausgaben',
+			icon: Receipt,
+			active: path.startsWith(`${base}/expenses`)
+		}
 	]);
 </script>
 
@@ -25,7 +36,11 @@
 
 <nav class="tabs reveal-1">
 	{#each tabs as tab (tab.href)}
-		<a href={tab.href} class:active={tab.active}>{tab.label}</a>
+		{@const Icon = tab.icon}
+		<a href={tab.href} class:active={tab.active}>
+			<Icon size={16} />
+			{tab.label}
+		</a>
 	{/each}
 </nav>
 
@@ -58,6 +73,9 @@
 		-webkit-backdrop-filter: blur(16px) saturate(150%);
 	}
 	.tabs a {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 		padding: 0.45rem 1.1rem;
 		border-radius: 999px;
 		color: var(--ink-soft);

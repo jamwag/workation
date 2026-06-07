@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Plane, Wallet, ArrowRight } from '@lucide/svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -18,16 +19,16 @@
 
 <div class="grid">
 	<a class="card interactive tile reveal-1" href="/workations">
-		<span class="ico" aria-hidden="true">🏝️</span>
+		<span class="ico coral"><Plane size={22} /></span>
 		<h2>Workations</h2>
 		<p class="muted">Aufenthalte ansehen, Tagespläne &amp; Ausgaben verwalten.</p>
-		<span class="go">Öffnen →</span>
+		<span class="go">Öffnen <ArrowRight size={16} /></span>
 	</a>
 	<a class="card interactive tile reveal-2" href="/settings">
-		<span class="ico" aria-hidden="true">💸</span>
+		<span class="ico aqua"><Wallet size={22} /></span>
 		<h2>Einstellungen</h2>
 		<p class="muted">PayPal-Benutzernamen hinterlegen.</p>
-		<span class="go">Öffnen →</span>
+		<span class="go">Öffnen <ArrowRight size={16} /></span>
 	</a>
 </div>
 
@@ -52,20 +53,36 @@
 		color: inherit;
 	}
 	.tile h2 {
-		margin: 0.3rem 0 0;
+		margin: 0.5rem 0 0;
 	}
 	.ico {
-		font-size: 1.8rem;
-		filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
+		display: inline-flex;
+		width: 2.8rem;
+		height: 2.8rem;
+		border-radius: 14px;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid var(--glass-brd);
+	}
+	.ico.coral {
+		color: var(--coral);
+		background: rgba(255, 138, 92, 0.12);
+	}
+	.ico.aqua {
+		color: var(--aqua);
+		background: rgba(79, 224, 196, 0.12);
 	}
 	.go {
-		margin-top: 0.8rem;
+		margin-top: 0.9rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
 		font-weight: 600;
 		color: var(--aqua);
-		transition: transform 0.25s var(--ease);
+		transition: gap 0.25s var(--ease);
 	}
 	.tile:hover .go {
-		transform: translateX(4px);
+		gap: 0.6rem;
 		color: var(--coral);
 	}
 </style>

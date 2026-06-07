@@ -6,6 +6,7 @@
 	import { page } from '$app/state';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import { Sun } from '@lucide/svelte';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
@@ -14,7 +15,7 @@
 <header class="topbar">
 	<nav>
 		<a class="brand" href="/">
-			<span class="dot" aria-hidden="true"></span>
+			<span class="brand-ico" aria-hidden="true"><Sun size={18} /></span>
 			Workation
 		</a>
 
@@ -78,22 +79,20 @@
 		color: var(--ink);
 	}
 
-	.dot {
-		width: 11px;
-		height: 11px;
-		border-radius: 50%;
-		background: linear-gradient(135deg, var(--coral), var(--amber));
-		box-shadow: 0 0 14px 2px rgba(255, 138, 92, 0.7);
-		animation: pulse 3.5s var(--ease) infinite;
+	.brand-ico {
+		display: inline-flex;
+		color: var(--coral);
+		animation: pulse 3.6s var(--ease) infinite;
 	}
 
 	@keyframes pulse {
 		0%,
 		100% {
-			box-shadow: 0 0 14px 2px rgba(255, 138, 92, 0.55);
+			filter: drop-shadow(0 0 6px rgba(255, 138, 92, 0.65));
 		}
 		50% {
-			box-shadow: 0 0 20px 5px rgba(79, 224, 196, 0.6);
+			filter: drop-shadow(0 0 11px rgba(79, 224, 196, 0.7));
+			color: var(--amber);
 		}
 	}
 

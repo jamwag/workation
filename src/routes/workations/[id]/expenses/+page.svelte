@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import { Paperclip, Receipt, CheckCheck, ExternalLink, Trash2, X } from '@lucide/svelte';
 	import { formatMoney } from '$lib/format';
 	import { paypalMeLink } from '$lib/money';
 	import type { PageProps } from './$types';
@@ -73,7 +74,7 @@
 <section class="card balances">
 	<h2>Salden</h2>
 	{#if data.balances.length === 0}
-		<p class="muted">Alles ausgeglichen — keine offenen Beträge. 🎉</p>
+		<p class="muted ok"><CheckCheck size={18} /> Alles ausgeglichen — keine offenen Beträge.</p>
 	{:else}
 		<ul class="balance-list">
 			{#each data.balances as b, i (b.user.id)}
@@ -96,7 +97,7 @@
 								target="_blank"
 								rel="noopener"
 							>
-								PayPal →
+								PayPal <ExternalLink size={14} />
 							</a>
 						{:else}
 							<span class="pill">kein PayPal</span>
@@ -150,7 +151,7 @@
 	<div class="receipt-field">
 		<label class="file-btn">
 			<input type="file" accept="image/*" onchange={onFileChange} />
-			📎 Beleg anhängen
+			<Paperclip size={16} /> Beleg anhängen
 		</label>
 		{#if compressing}
 			<span class="muted faint small">Bild wird komprimiert …</span>
@@ -158,7 +159,7 @@
 			<div class="preview">
 				<img src={previewUrl} alt="Beleg-Vorschau" />
 				<span class="muted faint small">komprimiert · {kb} KB</span>
-				<button type="button" class="ghost" onclick={resetReceipt} title="Entfernen">×</button>
+				<button type="button" class="ghost" onclick={resetReceipt} title="Entfernen"><X size={16} /></button>
 			</div>
 		{/if}
 	</div>
@@ -192,7 +193,7 @@
 							<img src="{base}/expenses/{e.id}/receipt" alt="Beleg" />
 						</a>
 					{:else}
-						<span class="receipt placeholder" aria-hidden="true">🧾</span>
+						<span class="receipt placeholder" aria-hidden="true"><Receipt size={20} /></span>
 					{/if}
 					<div class="info">
 						<div class="line">
@@ -208,7 +209,7 @@
 					{#if e.paidById === data.currentUserId || data.isManager}
 						<form method="POST" action="?/delete" use:enhance>
 							<input type="hidden" name="expenseId" value={e.id} />
-							<button class="ghost del" title="Löschen">×</button>
+							<button class="ghost del" title="Löschen"><Trash2 size={16} /></button>
 						</form>
 					{/if}
 				</li>
@@ -281,9 +282,17 @@
 		font-variant-numeric: tabular-nums;
 	}
 	.pay {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
 		padding: 0.4rem 0.8rem;
 		font-size: 0.85rem;
 		white-space: nowrap;
+	}
+	.ok {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
 	}
 
 	/* Formular */
