@@ -70,7 +70,7 @@ export async function validateSessionToken(token: string): Promise<SessionValida
 	const sessionId = hashToken(token);
 	const [result] = await db
 		.select({
-			user: { id: table.user.id, username: table.user.username },
+			user: { id: table.user.id, username: table.user.username, role: table.user.role },
 			session: table.session
 		})
 		.from(table.session)
@@ -145,5 +145,5 @@ export async function verifyPassword(stored: string, password: string): Promise<
 }
 
 export type SessionValidationResult =
-	| { session: table.Session; user: Pick<table.User, 'id' | 'username'> }
+	| { session: table.Session; user: Pick<table.User, 'id' | 'username' | 'role'> }
 	| { session: null; user: null };

@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
+import { count, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import * as auth from '$lib/server/auth';
@@ -63,10 +63,14 @@ export const actions: Actions = {
 		const passwordHash = await auth.hashPassword(password);
 		const userId = auth.generateUserId();
 
+		// Bootstrap: Der erste registrierte Nutzer wird Admin, alle weiteren sind 'member'.
+		const [{ total }] = await db.select({ total: count() }).from(table.user);
+		const role = total === 0 ? 'admin' : 'member';
+
 		// Insert separat absichern: der unique-Constraint auf username wirft bei Dubletten.
 		// Wichtig: redirect() steht AUSSERHALB des try/catch, sonst würde es fälschlich gefangen.
 		try {
-			await db.insert(table.user).values({ id: userId, username, passwordHash });
+			await db.insert(table.user).values({ id: userId, username, passwordHash, role });
 		} catch {
 			return fail(400, { message: 'Benutzername ist bereits vergeben' });
 		}

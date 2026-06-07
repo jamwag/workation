@@ -1,0 +1,127 @@
+:root {
+	--bg: #f6f7f9;
+	--surface: #ffffff;
+	--border: #e2e5ea;
+	--text: #1c2433;
+	--muted: #6b7280;
+	--primary: #2f6fed;
+	--primary-text: #ffffff;
+	--danger: #d23b3b;
+	--success: #1c8a4a;
+	--radius: 10px;
+	--shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.1);
+	--maxw: 64rem;
+	font-family:
+		system-ui,
+		-apple-system,
+		'Segoe UI',
+		Roboto,
+		sans-serif;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	background: var(--bg);
+	color: var(--text);
+	line-height: 1.5;
+}
+
+h1 {
+	font-size: 1.6rem;
+	margin: 0 0 0.75rem;
+}
+
+h2 {
+	font-size: 1.2rem;
+	margin: 0 0 0.5rem;
+}
+
+a {
+	color: var(--primary);
+}
+
+button,
+input,
+select,
+textarea {
+	font: inherit;
+}
+
+label {
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+	font-size: 0.9rem;
+	color: var(--muted);
+}
+
+input,
+select,
+textarea {
+	padding: 0.5rem 0.6rem;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface);
+	color: var(--text);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 2px solid var(--primary);
+	outline-offset: 0;
+	border-color: var(--primary);
+}
+
+button {
+	padding: 0.5rem 0.9rem;
+	border: 1px solid var(--primary);
+	border-radius: 8px;
+	background: var(--primary);
+	color: var(--primary-text);
+	cursor: pointer;
+	font-weight: 500;
+}
+
+button:hover {
+	filter: brightness(0.95);
+}
+
+button.secondary {
+	background: var(--surface);
+	color: var(--text);
+	border-color: var(--border);
+}
+
+button.danger {
+	background: var(--danger);
+	border-color: var(--danger);
+}
+
+.card {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	padding: 1.25rem;
+}
+
+.error {
+	color: var(--danger);
+	margin: 0;
+}
+
+.success {
+	color: var(--success);
+	margin: 0;
+}
+
+.muted {
+	color: var(--muted);
+}
