@@ -1,0 +1,23 @@
+# Supply-Chain-Schutz (pnpm >= 10.16)
+# Siehe: https://pnpm.io/supply-chain-security
+
+# Quarantäne: Pakete müssen mind. 14 Tage (20160 Min.) seit Veröffentlichung
+# "gereift" sein, bevor pnpm sie installiert. Kompromittierte Versionen werden
+# fast immer innerhalb weniger Tage erkannt und entfernt – diese Sperrfrist
+# schützt den GESAMTEN Abhängigkeitsbaum (auch transitive Pakete) vor dem
+# "frisch veröffentlicht = noch ungeprüft"-Zeitfenster (chalk/debug, Shai-Hulud).
+minimumReleaseAge: 20160
+
+# Pakete, die trotz Quarantäne sofort aktualisiert werden dürfen (leer = keine).
+minimumReleaseAgeExclude: []
+
+# Lifecycle-/Build-Skripte (preinstall/postinstall) sind standardmäßig blockiert.
+# Nur die hier gelisteten Pakete dürfen Build-Skripte ausführen – bewusste
+# Allowlist statt blindem Ausführen. Aktuell: KEINE Dependency benötigt eines.
+onlyBuiltDependencies: []
+
+# Transitive Versionen erzwingen (Sicherheitsfixes, die der Parent nicht zulässt).
+# @sveltejs/kit deklariert cookie ^0.6.0 (= <0.7.0) und zieht damit das anfällige
+# cookie 0.6.0 (GHSA-pxg6-pf52-xh8x). 0.7.2 ist API-kompatibel und gepatcht.
+overrides:
+  cookie: 0.7.2
