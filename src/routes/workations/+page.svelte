@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { fly } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { formatDateRange } from '$lib/format';
 	import type { PageProps } from './$types';
 
@@ -10,22 +12,27 @@
 	<title>Workations</title>
 </svelte:head>
 
-<div class="head">
-	<h1>Workations</h1>
+<section class="head reveal">
+	<div>
+		<p class="eyebrow">Deine Reisen</p>
+		<h1>Workations</h1>
+	</div>
 	{#if data.isAdmin}
 		<a class="btn" href="/workations/new">+ Neue Workation</a>
 	{/if}
-</div>
+</section>
 
 {#if data.invitations.length > 0}
-	<section>
-		<h2>Einladungen</h2>
+	<section class="block">
+		<h2>Offene Einladungen</h2>
 		<ul class="list">
-			{#each data.invitations as inv (inv.memberId)}
-				<li class="card row">
+			{#each data.invitations as inv, i (inv.memberId)}
+				<li class="card row" in:fly={{ y: 14, duration: 400, delay: 60 * i, easing: cubicOut }}>
 					<div>
-						<strong>{inv.workation.name}</strong>
-						<div class="muted">{formatDateRange(inv.workation.startDate, inv.workation.endDate)}</div>
+						<strong class="title">{inv.workation.name}</strong>
+						<div class="muted faint">
+							{formatDateRange(inv.workation.startDate, inv.workation.endDate)}
+						</div>
 					</div>
 					<div class="actions">
 						<form method="POST" action="?/accept" use:enhance>
@@ -43,20 +50,25 @@
 	</section>
 {/if}
 
-<section>
+<section class="block">
 	<h2>Meine Workations</h2>
 	{#if data.active.length === 0}
-		<p class="muted">Noch keine Workations. {data.isAdmin ? 'Lege oben eine neue an.' : 'Warte auf eine Einladung.'}</p>
+		<div class="card empty reveal-2">
+			<p class="muted">
+				Noch keine Workations.
+				{data.isAdmin ? 'Lege oben deine erste an.' : 'Warte auf eine Einladung.'}
+			</p>
+		</div>
 	{:else}
-		<ul class="list">
-			{#each data.active as m (m.memberId)}
-				<li>
-					<a class="card row tile" href="/workations/{m.workation.id}">
-						<div>
-							<strong>{m.workation.name}</strong>
-							<div class="muted">{formatDateRange(m.workation.startDate, m.workation.endDate)}</div>
+		<ul class="grid">
+			{#each data.active as m, i (m.memberId)}
+				<li in:fly={{ y: 16, duration: 450, delay: 60 * i, easing: cubicOut }}>
+					<a class="card interactive tile" href="/workations/{m.workation.id}">
+						<strong class="title">{m.workation.name}</strong>
+						<div class="muted faint">
+							{formatDateRange(m.workation.startDate, m.workation.endDate)}
 						</div>
-						<span aria-hidden="true">→</span>
+						<span class="go">Öffnen →</span>
 					</a>
 				</li>
 			{/each}
@@ -67,21 +79,21 @@
 <style>
 	.head {
 		display: flex;
-		align-items: center;
+		align-items: flex-end;
 		justify-content: space-between;
 		gap: 1rem;
+		margin-bottom: 2rem;
 	}
-	.btn {
-		background: var(--primary);
-		color: var(--primary-text);
-		padding: 0.5rem 0.9rem;
-		border-radius: 8px;
-		text-decoration: none;
-		font-weight: 500;
-		white-space: nowrap;
+	.head h1 {
+		margin: 0;
 	}
-	section {
-		margin-top: 1.5rem;
+	.block {
+		margin-bottom: 2rem;
+	}
+	.title {
+		font-family: var(--font-display);
+		font-size: 1.15rem;
+		font-weight: 560;
 	}
 	.list {
 		list-style: none;
@@ -89,24 +101,47 @@
 		margin: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.6rem;
+		gap: 0.8rem;
 	}
 	.row {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
-	}
-	.tile {
-		text-decoration: none;
-		color: inherit;
-		transition: border-color 0.15s;
-	}
-	.tile:hover {
-		border-color: var(--primary);
+		flex-wrap: wrap;
 	}
 	.actions {
 		display: flex;
 		gap: 0.5rem;
+	}
+	.grid {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+		gap: 1.1rem;
+	}
+	.tile {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		text-decoration: none;
+		color: inherit;
+		height: 100%;
+	}
+	.go {
+		margin-top: 1rem;
+		font-weight: 600;
+		color: var(--aqua);
+		transition: transform 0.25s var(--ease);
+	}
+	.tile:hover .go {
+		transform: translateX(4px);
+		color: var(--coral);
+	}
+	.empty {
+		padding: 2rem;
+		text-align: center;
 	}
 </style>

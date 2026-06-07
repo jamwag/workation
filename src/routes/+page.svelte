@@ -5,42 +5,67 @@
 </script>
 
 <svelte:head>
-	<title>Start</title>
+	<title>Start · Workation</title>
 </svelte:head>
 
-<h1>Hallo, {data.user.username}! 👋</h1>
-<p class="muted">Plane Workations, teile Ausgaben und behalte den Überblick.</p>
+<section class="hero reveal">
+	<p class="eyebrow">Dein Basislager</p>
+	<h1>Hallo, {data.user.username}.</h1>
+	<p class="muted lede">
+		Plane Aufenthalte, stimme Tagespläne ab und teile Ausgaben — alles an einem Ort.
+	</p>
+</section>
 
 <div class="grid">
-	<a class="card tile" href="/workations">
+	<a class="card interactive tile reveal-1" href="/workations">
+		<span class="ico" aria-hidden="true">🏝️</span>
 		<h2>Workations</h2>
-		<p class="muted">Aufenthalte ansehen, Tagespläne & Ausgaben verwalten.</p>
+		<p class="muted">Aufenthalte ansehen, Tagespläne &amp; Ausgaben verwalten.</p>
+		<span class="go">Öffnen →</span>
 	</a>
-	<a class="card tile" href="/settings">
+	<a class="card interactive tile reveal-2" href="/settings">
+		<span class="ico" aria-hidden="true">💸</span>
 		<h2>Einstellungen</h2>
-		<p class="muted">PayPal.me-Benutzernamen hinterlegen.</p>
+		<p class="muted">PayPal-Benutzernamen hinterlegen.</p>
+		<span class="go">Öffnen →</span>
 	</a>
 </div>
 
 <style>
+	.hero {
+		margin-bottom: 2rem;
+	}
+	.lede {
+		font-size: 1.05rem;
+		max-width: 34rem;
+	}
 	.grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-		gap: 1rem;
-		margin-top: 1.5rem;
+		grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+		gap: 1.1rem;
 	}
-
 	.tile {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
 		text-decoration: none;
 		color: inherit;
-		transition: border-color 0.15s;
 	}
-
-	.tile:hover {
-		border-color: var(--primary);
-	}
-
 	.tile h2 {
-		color: var(--text);
+		margin: 0.3rem 0 0;
+	}
+	.ico {
+		font-size: 1.8rem;
+		filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
+	}
+	.go {
+		margin-top: 0.8rem;
+		font-weight: 600;
+		color: var(--aqua);
+		transition: transform 0.25s var(--ease);
+	}
+	.tile:hover .go {
+		transform: translateX(4px);
+		color: var(--coral);
 	}
 </style>

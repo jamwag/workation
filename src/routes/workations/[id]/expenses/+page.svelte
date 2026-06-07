@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { fly } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { formatMoney } from '$lib/format';
 	import { paypalMeLink } from '$lib/money';
 	import type { PageProps } from './$types';
@@ -69,30 +71,36 @@
 
 <!-- Schuldenübersicht -->
 <section class="card balances">
-	<h2>Wer schuldet wem</h2>
+	<h2>Salden</h2>
 	{#if data.balances.length === 0}
-		<p class="muted">Aktuell sind keine Beträge offen.</p>
+		<p class="muted">Alles ausgeglichen — keine offenen Beträge. 🎉</p>
 	{:else}
-		<ul>
-			{#each data.balances as b (b.user.id)}
-				<li>
+		<ul class="balance-list">
+			{#each data.balances as b, i (b.user.id)}
+				<li
+					class="balance"
+					class:owe={b.net > 0}
+					in:fly={{ y: 10, duration: 350, delay: 40 * i, easing: cubicOut }}
+				>
+					<span class="avatar" aria-hidden="true">{b.user.username.slice(0, 1).toUpperCase()}</span>
+					<div class="bal-body">
+						<span class="bal-name">{b.user.username}</span>
+						<span class="bal-dir">{b.net > 0 ? 'du schuldest' : 'schuldet dir'}</span>
+					</div>
+					<span class="bal-amount">{formatMoney(Math.abs(b.net))}</span>
 					{#if b.net > 0}
-						<span>
-							Du schuldest <strong>{b.user.username}</strong>
-							<strong>{formatMoney(b.net)}</strong>
-						</span>
 						{#if b.user.paypalHandle}
-							<a class="pay" href={paypalMeLink(b.user.paypalHandle, b.net)} target="_blank" rel="noopener">
-								Mit PayPal zahlen →
+							<a
+								class="btn pay"
+								href={paypalMeLink(b.user.paypalHandle, b.net)}
+								target="_blank"
+								rel="noopener"
+							>
+								PayPal →
 							</a>
 						{:else}
-							<span class="muted small">(kein PayPal hinterlegt)</span>
+							<span class="pill">kein PayPal</span>
 						{/if}
-					{:else}
-						<span>
-							<strong>{b.user.username}</strong> schuldet dir
-							<strong>{formatMoney(-b.net)}</strong>
-						</span>
 					{/if}
 				</li>
 			{/each}
@@ -121,7 +129,7 @@
 			Beschreibung
 			<input name="description" placeholder="z. B. Einkauf Supermarkt" maxlength="200" />
 		</label>
-		<label>
+		<label class="amount-field">
 			Betrag (€)
 			<input name="amount" type="number" step="0.01" min="0.01" placeholder="0,00" />
 		</label>
@@ -129,34 +137,37 @@
 
 	<fieldset>
 		<legend>Aufteilen auf</legend>
-		<div class="participants">
+		<div class="chips">
 			{#each data.members as m (m.id)}
-				<label class="check">
+				<label class="chip">
 					<input type="checkbox" name="participants" value={m.id} checked />
-					{m.username}{#if m.id === data.currentUserId} (du){/if}
+					<span>{m.username}{#if m.id === data.currentUserId} (du){/if}</span>
 				</label>
 			{/each}
 		</div>
 	</fieldset>
 
-	<label>
-		Beleg (optional)
-		<input type="file" accept="image/*" onchange={onFileChange} />
-	</label>
-	{#if compressing}
-		<p class="muted small">Bild wird komprimiert …</p>
-	{:else if previewUrl}
-		<div class="preview">
-			<img src={previewUrl} alt="Beleg-Vorschau" />
-			<span class="muted small">komprimiert · {kb} KB</span>
-		</div>
-	{/if}
+	<div class="receipt-field">
+		<label class="file-btn">
+			<input type="file" accept="image/*" onchange={onFileChange} />
+			📎 Beleg anhängen
+		</label>
+		{#if compressing}
+			<span class="muted faint small">Bild wird komprimiert …</span>
+		{:else if previewUrl}
+			<div class="preview">
+				<img src={previewUrl} alt="Beleg-Vorschau" />
+				<span class="muted faint small">komprimiert · {kb} KB</span>
+				<button type="button" class="ghost" onclick={resetReceipt} title="Entfernen">×</button>
+			</div>
+		{/if}
+	</div>
 	{#if compressError}<p class="error">{compressError}</p>{/if}
 
 	{#if form?.message}
 		<p class="error">{form.message}</p>
 	{:else if form?.added}
-		<p class="success">Ausgabe gespeichert.</p>
+		<p class="success">Ausgabe gespeichert ✓</p>
 	{/if}
 
 	<div>
@@ -165,34 +176,39 @@
 </form>
 
 <!-- Liste -->
-<section>
-	<h2>Ausgaben</h2>
+<section class="block">
+	<h2>Verlauf</h2>
 	{#if data.expenses.length === 0}
 		<p class="muted">Noch keine Ausgaben erfasst.</p>
 	{:else}
 		<ul class="expenses">
-			{#each data.expenses as e (e.id)}
-				<li class="card expense">
+			{#each data.expenses as e, i (e.id)}
+				<li
+					class="card expense"
+					in:fly={{ y: 12, duration: 380, delay: 35 * i, easing: cubicOut }}
+				>
+					{#if e.hasReceipt}
+						<a class="receipt" href="{base}/expenses/{e.id}/receipt" target="_blank" rel="noopener">
+							<img src="{base}/expenses/{e.id}/receipt" alt="Beleg" />
+						</a>
+					{:else}
+						<span class="receipt placeholder" aria-hidden="true">🧾</span>
+					{/if}
 					<div class="info">
 						<div class="line">
 							<strong>{e.description}</strong>
 							<span class="amount">{formatMoney(e.amountCents, e.currency)}</span>
 						</div>
-						<div class="muted small">
-							bezahlt von {e.paidById === data.currentUserId ? 'dir' : e.paidByName}
+						<div class="muted faint small">
+							{e.paidById === data.currentUserId ? 'du hast bezahlt' : `${e.paidByName} hat bezahlt`}
 							· {new Date(e.createdAt).toLocaleDateString('de-DE')}
 							{#if e.myShare != null}· dein Anteil {formatMoney(e.myShare)}{/if}
 						</div>
 					</div>
-					{#if e.hasReceipt}
-						<a class="receipt" href="{base}/expenses/{e.id}/receipt" target="_blank" rel="noopener">
-							<img src="{base}/expenses/{e.id}/receipt" alt="Beleg" />
-						</a>
-					{/if}
 					{#if e.paidById === data.currentUserId || data.isManager}
 						<form method="POST" action="?/delete" use:enhance>
 							<input type="hidden" name="expenseId" value={e.id} />
-							<button class="link-danger" title="Löschen">×</button>
+							<button class="ghost del" title="Löschen">×</button>
 						</form>
 					{/if}
 				</li>
@@ -202,93 +218,219 @@
 </section>
 
 <style>
-	section,
+	.block,
 	.add {
-		margin-bottom: 1.5rem;
+		margin-bottom: 1.6rem;
 	}
-	.balances ul {
+	.balances {
+		margin-bottom: 1.6rem;
+	}
+
+	/* Salden */
+	.balance-list {
 		list-style: none;
 		padding: 0;
 		margin: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.7rem;
 	}
-	.balances li {
+	.balance {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		flex-wrap: wrap;
+		gap: 0.8rem;
+		padding: 0.7rem 0.9rem;
+		border-radius: var(--radius-sm);
+		background: rgba(79, 224, 196, 0.07);
+		border-left: 3px solid var(--aqua);
+	}
+	.balance.owe {
+		background: rgba(255, 138, 92, 0.08);
+		border-left-color: var(--coral);
+	}
+	.avatar {
+		width: 2.2rem;
+		height: 2.2rem;
+		border-radius: 50%;
+		display: grid;
+		place-items: center;
+		font-weight: 700;
+		color: #08201c;
+		background: linear-gradient(135deg, var(--aqua), var(--amber));
+		flex-shrink: 0;
+	}
+	.bal-body {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-width: 0;
+	}
+	.bal-name {
+		font-weight: 600;
+	}
+	.bal-dir {
+		font-size: 0.78rem;
+		color: var(--ink-faint);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+	.bal-amount {
+		font-family: var(--font-display);
+		font-size: 1.25rem;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
 	}
 	.pay {
-		font-weight: 500;
+		padding: 0.4rem 0.8rem;
+		font-size: 0.85rem;
 		white-space: nowrap;
 	}
+
+	/* Formular */
 	.add {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.9rem;
 	}
 	.row {
 		display: flex;
-		gap: 0.75rem;
+		gap: 0.8rem;
+		flex-wrap: wrap;
 	}
 	.grow {
+		flex: 2;
+		min-width: 12rem;
+	}
+	.amount-field {
 		flex: 1;
+		min-width: 7rem;
 	}
 	fieldset {
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 0.6rem 0.8rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-sm);
+		padding: 0.8rem;
+		margin: 0;
 	}
 	legend {
-		color: var(--muted);
-		font-size: 0.9rem;
-		padding: 0 0.3rem;
+		color: var(--ink-soft);
+		font-size: 0.8rem;
+		font-weight: 500;
+		padding: 0 0.4rem;
 	}
-	.participants {
+	.chips {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.4rem 1rem;
+		gap: 0.5rem;
 	}
-	.check {
-		flex-direction: row;
+	.chip {
+		cursor: pointer;
+	}
+	.chip input {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+	}
+	.chip span {
+		display: inline-block;
+		padding: 0.35rem 0.8rem;
+		border-radius: 999px;
+		border: 1px solid var(--glass-brd);
+		background: var(--glass);
+		font-size: 0.85rem;
+		color: var(--ink-soft);
+		transition: all 0.2s var(--ease);
+	}
+	.chip:has(input:checked) span {
+		background: rgba(79, 224, 196, 0.16);
+		border-color: rgba(79, 224, 196, 0.5);
+		color: var(--aqua);
+		font-weight: 600;
+	}
+	.chip input:focus-visible + span {
+		box-shadow: 0 0 0 3px rgba(255, 138, 92, 0.3);
+	}
+
+	/* Beleg */
+	.receipt-field {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+	.file-btn {
+		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
-		color: var(--text);
+		padding: 0.5rem 0.9rem;
+		border-radius: var(--radius-sm);
+		border: 1px dashed var(--glass-brd);
+		background: var(--glass);
+		cursor: pointer;
+		font-size: 0.9rem;
+		color: var(--ink-soft);
+		transition: all 0.2s var(--ease);
 	}
-	.check input {
-		width: auto;
+	.file-btn:hover {
+		border-color: var(--coral);
+		color: var(--ink);
+	}
+	.file-btn input {
+		display: none;
 	}
 	.preview {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 0.6rem;
 	}
 	.preview img {
-		max-height: 80px;
-		border-radius: 6px;
-		border: 1px solid var(--border);
+		max-height: 64px;
+		border-radius: 8px;
+		border: 1px solid var(--glass-brd);
 	}
 	.small {
-		font-size: 0.8rem;
+		font-size: 0.78rem;
 	}
+
+	/* Liste */
 	.expenses {
 		list-style: none;
 		padding: 0;
 		margin: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.6rem;
+		gap: 0.7rem;
 	}
 	.expense {
 		display: flex;
 		align-items: center;
 		gap: 1rem;
+		padding: 0.9rem 1.1rem;
+	}
+	.receipt {
+		flex-shrink: 0;
+	}
+	.receipt img {
+		height: 48px;
+		width: 48px;
+		object-fit: cover;
+		border-radius: 10px;
+		border: 1px solid var(--glass-brd);
+		display: block;
+	}
+	.receipt.placeholder {
+		height: 48px;
+		width: 48px;
+		display: grid;
+		place-items: center;
+		font-size: 1.4rem;
+		border-radius: 10px;
+		background: var(--glass);
+		border: 1px solid var(--line);
+		opacity: 0.6;
 	}
 	.info {
 		flex: 1;
+		min-width: 0;
 	}
 	.line {
 		display: flex;
@@ -296,24 +438,17 @@
 		gap: 1rem;
 	}
 	.amount {
-		font-variant-numeric: tabular-nums;
+		font-family: var(--font-display);
 		font-weight: 600;
+		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
 	}
-	.receipt img {
-		height: 48px;
-		width: 48px;
-		object-fit: cover;
-		border-radius: 6px;
-		border: 1px solid var(--border);
-	}
-	.link-danger {
-		background: none;
-		border: none;
-		color: var(--danger);
-		cursor: pointer;
+	.del {
+		color: var(--ink-faint);
 		font-size: 1.2rem;
 		line-height: 1;
-		padding: 0 0.3rem;
+	}
+	.del:hover {
+		color: var(--danger);
 	}
 </style>

@@ -9,9 +9,12 @@
 	<title>Neue Workation</title>
 </svelte:head>
 
-<h1>Neue Workation</h1>
+<section class="head reveal">
+	<p class="eyebrow">Neuer Aufenthalt</p>
+	<h1>Workation anlegen</h1>
+</section>
 
-<div class="card">
+<div class="card reveal-1">
 	<form method="POST" use:enhance>
 		<label>
 			Name
@@ -40,15 +43,20 @@
 </div>
 
 <style>
+	.head {
+		margin-bottom: 1.5rem;
+	}
+	.card {
+		max-width: 30rem;
+	}
 	form {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
-		max-width: 28rem;
+		gap: 0.9rem;
 	}
 	.dates {
 		display: flex;
-		gap: 0.75rem;
+		gap: 0.8rem;
 	}
 	.dates label {
 		flex: 1;
@@ -56,6 +64,7 @@
 	.actions {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: 1.2rem;
+		margin-top: 0.4rem;
 	}
 </style>

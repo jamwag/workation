@@ -6,52 +6,64 @@
 </script>
 
 <svelte:head>
-	<title>Anmelden</title>
+	<title>Anmelden · Workation</title>
 </svelte:head>
 
-<h1>Anmelden oder Registrieren</h1>
+<div class="auth">
+	<div class="card auth-card reveal">
+		<p class="eyebrow">Willkommen an Bord</p>
+		<h1>Schön, dich zu sehen.</h1>
+		<p class="muted intro">
+			Melde dich an oder erstelle ein Konto, um deine Workations zu planen.
+		</p>
 
-<form method="POST" use:enhance>
-	<label>
-		Benutzername
-		<input name="username" autocomplete="username" />
-	</label>
-	<label>
-		Passwort
-		<input type="password" name="password" autocomplete="current-password" />
-	</label>
+		<form method="POST" use:enhance>
+			<label>
+				Benutzername
+				<input name="username" autocomplete="username" placeholder="benutzername" />
+			</label>
+			<label>
+				Passwort
+				<input type="password" name="password" autocomplete="current-password" placeholder="••••••••" />
+			</label>
 
-	{#if form?.message}
-		<p class="error">{form.message}</p>
-	{/if}
+			{#if form?.message}
+				<p class="error">{form.message}</p>
+			{/if}
 
-	<div class="actions">
-		<button formaction="?/login">Anmelden</button>
-		<button formaction="?/register">Registrieren</button>
+			<div class="actions">
+				<button formaction="?/login">Anmelden</button>
+				<button class="secondary" formaction="?/register">Registrieren</button>
+			</div>
+		</form>
 	</div>
-</form>
+</div>
 
 <style>
+	.auth {
+		min-height: 62vh;
+		display: grid;
+		place-items: center;
+	}
+	.auth-card {
+		width: 100%;
+		max-width: 27rem;
+		padding: 2.4rem;
+	}
+	.intro {
+		margin-bottom: 1.6rem;
+	}
 	form {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
-		max-width: 20rem;
+		gap: 0.9rem;
 	}
-
-	label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
 	.actions {
 		display: flex;
-		gap: 0.5rem;
+		gap: 0.6rem;
+		margin-top: 0.5rem;
 	}
-
-	.error {
-		color: #d00;
-		margin: 0;
+	.actions button {
+		flex: 1;
 	}
 </style>

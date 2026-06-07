@@ -4,21 +4,28 @@
 
 	let { data, form }: PageProps = $props();
 
-	// Vom Server validierter Wert nach Absenden, sonst der gespeicherte Wert.
 	let handle = $derived(form?.paypalHandle ?? data.profile.paypalHandle ?? '');
 </script>
 
 <svelte:head>
-	<title>Einstellungen</title>
+	<title>Einstellungen · Workation</title>
 </svelte:head>
 
-<h1>Einstellungen</h1>
+<section class="head reveal">
+	<p class="eyebrow">Profil</p>
+	<h1>Einstellungen</h1>
+</section>
 
-<div class="card">
-	<p class="muted">
-		Angemeldet als <strong>{data.profile.username}</strong> · Rolle:
-		<strong>{data.profile.role === 'admin' ? 'Admin' : 'Mitglied'}</strong>
-	</p>
+<div class="card reveal-1">
+	<div class="who">
+		<div>
+			<div class="name">{data.profile.username}</div>
+			<span class="muted faint">Angemeldetes Konto</span>
+		</div>
+		<span class="pill" class:coral={data.profile.role === 'admin'}>
+			{data.profile.role === 'admin' ? 'Admin' : 'Mitglied'}
+		</span>
+	</div>
 
 	<form method="POST" use:enhance>
 		<label>
@@ -30,15 +37,14 @@
 				autocomplete="off"
 			/>
 		</label>
-		<p class="hint muted">
-			Nötig, damit andere dir offene Beträge per PayPal schicken können. Du findest deinen
-			Benutzernamen unter paypal.me.
+		<p class="hint faint">
+			Damit andere dir offene Beträge per PayPal schicken können. Zu finden unter paypal.me.
 		</p>
 
 		{#if form?.message}
 			<p class="error">{form.message}</p>
 		{:else if form?.success}
-			<p class="success">Gespeichert.</p>
+			<p class="success">Gespeichert ✓</p>
 		{/if}
 
 		<div>
@@ -48,14 +54,31 @@
 </div>
 
 <style>
+	.head {
+		margin-bottom: 1.5rem;
+	}
+	.card {
+		max-width: 30rem;
+	}
+	.who {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding-bottom: 1.2rem;
+		margin-bottom: 1.2rem;
+		border-bottom: 1px solid var(--line);
+	}
+	.name {
+		font-family: var(--font-display);
+		font-size: 1.2rem;
+		font-weight: 560;
+	}
 	form {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
-		max-width: 24rem;
-		margin-top: 1rem;
+		gap: 0.7rem;
 	}
-
 	.hint {
 		font-size: 0.8rem;
 		margin: 0;

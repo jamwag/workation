@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { fly } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { eachDayISO, formatDate, formatDayLong, formatTime } from '$lib/format';
 	import type { PageProps } from './$types';
 
@@ -7,7 +9,6 @@
 
 	let days = $derived(eachDayISO(data.workation.startDate, data.workation.endDate));
 
-	// Einträge nach Tag gruppieren (Reihenfolge kommt bereits sortiert vom Server).
 	let byDay = $derived.by(() => {
 		const grouped: Record<string, typeof data.entries> = {};
 		for (const entry of data.entries) {
@@ -34,11 +35,11 @@
 				</select>
 			</label>
 			<label>
-				Von (optional)
+				Von
 				<input type="time" name="startTime" />
 			</label>
 			<label>
-				Bis (optional)
+				Bis
 				<input type="time" name="endTime" />
 			</label>
 		</div>
@@ -53,7 +54,7 @@
 		{#if form?.message}
 			<p class="error">{form.message}</p>
 		{:else if form?.added}
-			<p class="success">Eintrag hinzugefügt.</p>
+			<p class="success">Eintrag hinzugefügt ✓</p>
 		{/if}
 		<div>
 			<button>Hinzufügen</button>
@@ -62,34 +63,36 @@
 {/if}
 
 <div class="calendar">
-	{#each days as day (day)}
-		<section class="day card">
-			<h3>{formatDayLong(day)}</h3>
+	{#each days as day, i (day)}
+		<section class="card day" in:fly={{ y: 14, duration: 400, delay: 40 * i, easing: cubicOut }}>
+			<h3>
+				<span class="weekday">{formatDayLong(day).split(',')[0]}</span>
+				<span class="date">{formatDate(day)}</span>
+			</h3>
 			{#if (byDay[day] ?? []).length === 0}
-				<p class="muted empty">Keine Einträge</p>
+				<p class="muted faint empty">Keine Einträge</p>
 			{:else}
-				<ul>
+				<ul class="timeline">
 					{#each byDay[day] ?? [] as entry (entry.id)}
 						<li>
-							<div class="entry">
-								{#if entry.startTime}
-									<span class="time">
-										{formatTime(entry.startTime)}{#if entry.endTime}–{formatTime(
-												entry.endTime
-											)}{/if}
-									</span>
-								{/if}
-								<div class="body">
-									<span class="title">{entry.title}</span>
-									{#if entry.description}<p class="desc muted">{entry.description}</p>{/if}
-								</div>
-								{#if data.isManager}
-									<form method="POST" action="?/delete" use:enhance>
-										<input type="hidden" name="entryId" value={entry.id} />
-										<button class="link-danger" title="Löschen">×</button>
-									</form>
-								{/if}
+							<span class="bullet" aria-hidden="true"></span>
+							{#if entry.startTime}
+								<span class="time">
+									{formatTime(entry.startTime)}{#if entry.endTime}–{formatTime(entry.endTime)}{/if}
+								</span>
+							{:else}
+								<span class="time faint">ganztägig</span>
+							{/if}
+							<div class="body">
+								<span class="title">{entry.title}</span>
+								{#if entry.description}<p class="desc muted">{entry.description}</p>{/if}
 							</div>
+							{#if data.isManager}
+								<form method="POST" action="?/delete" use:enhance>
+									<input type="hidden" name="entryId" value={entry.id} />
+									<button class="ghost del" title="Löschen">×</button>
+								</form>
+							{/if}
 						</li>
 					{/each}
 				</ul>
@@ -100,65 +103,94 @@
 
 <style>
 	.add {
-		margin-bottom: 1.5rem;
+		margin-bottom: 1.6rem;
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.85rem;
 	}
 	.add .row {
 		display: flex;
-		gap: 0.75rem;
+		gap: 0.8rem;
+		flex-wrap: wrap;
 	}
 	.add .row label {
 		flex: 1;
+		min-width: 7rem;
 	}
 	.calendar {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.9rem;
 	}
 	.day h3 {
-		margin: 0 0 0.6rem;
-		font-size: 1rem;
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
+		margin: 0 0 0.8rem;
+	}
+	.weekday {
+		font-family: var(--font-display);
+		font-size: 1.1rem;
+	}
+	.date {
+		font-family: var(--font-body);
+		font-size: 0.85rem;
+		font-weight: 500;
+		color: var(--ink-faint);
 	}
 	.empty {
 		margin: 0;
 		font-size: 0.9rem;
 	}
-	ul {
+	.timeline {
 		list-style: none;
 		padding: 0;
 		margin: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.7rem;
 	}
-	.entry {
+	.timeline li {
 		display: flex;
 		align-items: baseline;
-		gap: 0.75rem;
+		gap: 0.7rem;
+		position: relative;
+		padding-left: 1rem;
+	}
+	.bullet {
+		position: absolute;
+		left: 0;
+		top: 0.5rem;
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		background: var(--coral);
+		box-shadow: 0 0 10px 1px rgba(255, 138, 92, 0.6);
 	}
 	.time {
 		font-variant-numeric: tabular-nums;
-		color: var(--primary);
-		font-weight: 500;
+		color: var(--aqua);
+		font-weight: 600;
+		font-size: 0.88rem;
 		white-space: nowrap;
 		min-width: 6.5rem;
 	}
 	.body {
 		flex: 1;
 	}
+	.title {
+		font-weight: 600;
+	}
 	.desc {
 		margin: 0.15rem 0 0;
 		font-size: 0.9rem;
 	}
-	.link-danger {
-		background: none;
-		border: none;
-		color: var(--danger);
-		cursor: pointer;
-		font-size: 1.1rem;
+	.del {
+		color: var(--ink-faint);
+		font-size: 1.2rem;
 		line-height: 1;
-		padding: 0 0.3rem;
+	}
+	.del:hover {
+		color: var(--danger);
 	}
 </style>
