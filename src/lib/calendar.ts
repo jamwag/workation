@@ -91,6 +91,18 @@ export function weekdayShort(iso: string): string {
 	});
 }
 
+/** Anzahl ganzer Tage zwischen zwei ISO-Daten (toISO - fromISO). */
+export function daysBetweenISO(fromISO: string, toISO: string): number {
+	const a = new Date(`${fromISO}T00:00:00Z`).getTime();
+	const b = new Date(`${toISO}T00:00:00Z`).getTime();
+	return Math.round((b - a) / 86_400_000);
+}
+
+/** Heutiges Datum als ISO ('YYYY-MM-DD') in der angegebenen Zeitzone. */
+export function todayISO(timeZone = 'Europe/Berlin'): string {
+	return new Date().toLocaleDateString('en-CA', { timeZone });
+}
+
 /** 'HH:MM' -> Minuten seit Mitternacht. */
 export function timeToMinutes(time: string): number {
 	const [h, m] = time.split(':').map(Number);
