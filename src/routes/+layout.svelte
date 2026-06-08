@@ -1,5 +1,5 @@
 <script lang="ts">
-	import '@fontsource-variable/fraunces/full.css';
+	import '@fontsource-variable/bricolage-grotesque/index.css';
 	import '@fontsource-variable/manrope/index.css';
 	import '../app.css';
 	import { enhance } from '$app/forms';
