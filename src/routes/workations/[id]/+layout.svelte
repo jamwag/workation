@@ -10,7 +10,6 @@
 	let path = $derived(page.url.pathname);
 
 	let tabs = $derived([
-		{ href: base, label: 'Mitglieder', icon: Users, active: path === base },
 		{
 			href: `${base}/schedule`,
 			label: 'Tagesplan',
@@ -22,7 +21,8 @@
 			label: 'Ausgaben',
 			icon: Receipt,
 			active: path.startsWith(`${base}/expenses`)
-		}
+		},
+		{ href: `${base}/members`, label: 'Mitglieder', icon: Users, active: path === `${base}/members` }
 	]);
 </script>
 

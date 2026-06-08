@@ -63,7 +63,7 @@
 		<ul class="grid">
 			{#each data.active as m, i (m.memberId)}
 				<li in:fly={{ y: 16, duration: 450, delay: 60 * i, easing: cubicOut }}>
-					<a class="card interactive tile" href="/workations/{m.workation.id}">
+					<a class="card interactive tile" href="/workations/{m.workation.id}/schedule">
 						<strong class="title">{m.workation.name}</strong>
 						<div class="muted faint">
 							{formatDateRange(m.workation.startDate, m.workation.endDate)}

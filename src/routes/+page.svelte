@@ -65,7 +65,7 @@
 		<div class="now-links">
 			<a href="/workations/{c.workation.id}/schedule"><CalendarDays size={15} /> Tagesplan</a>
 			<a href="/workations/{c.workation.id}/expenses"><Receipt size={15} /> Ausgaben</a>
-			<a class="open" href="/workations/{c.workation.id}">Öffnen <ArrowRight size={15} /></a>
+			<a class="open" href="/workations/{c.workation.id}/schedule">Öffnen <ArrowRight size={15} /></a>
 		</div>
 	</section>
 {/each}
@@ -77,7 +77,7 @@
 		<ul class="up-list">
 			{#each data.upcoming as u (u.workation.id)}
 				<li>
-					<a class="card interactive up" href="/workations/{u.workation.id}">
+					<a class="card interactive up" href="/workations/{u.workation.id}/schedule">
 						<div>
 							<strong class="up-name">{u.workation.name}</strong>
 							<div class="muted faint">
