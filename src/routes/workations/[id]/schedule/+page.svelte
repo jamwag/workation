@@ -1,19 +1,32 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
-	import { fade } from 'svelte/transition';
-	import { ChevronLeft, ChevronRight, Plus, Trash2 } from '@lucide/svelte';
-	import { formatDayLong, formatTime } from '$lib/format';
-	import { dayOfMonth, monthLabel, monthMatrix, monthsInRange } from '$lib/calendar';
+	import { fade, scale } from 'svelte/transition';
+	import { ChevronLeft, ChevronRight, Trash2, X } from '@lucide/svelte';
+	import { formatDate, formatDateRange, formatTime } from '$lib/format';
+	import {
+		addDaysISO,
+		dayOfMonth,
+		minutesToTime,
+		timeToMinutes,
+		weekdayShort,
+		weekStartsInRange
+	} from '$lib/calendar';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 
-	const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+	const DAY_START = 7; // erste sichtbare Stunde
+	const DAY_END = 23; // letzte sichtbare Stunde
+	const HOUR_PX = 48;
+	const RANGE_MIN = DAY_START * 60;
+	const RANGE_MAX = DAY_END * 60;
+
+	const slots = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
+	const hourLabels = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_START + i);
+
 	const start = $derived(data.workation.startDate);
 	const end = $derived(data.workation.endDate);
 
-	// Einträge nach Tag gruppieren.
 	let byDay = $derived.by(() => {
 		const grouped: Record<string, typeof data.entries> = {};
 		for (const entry of data.entries) {
@@ -22,20 +35,80 @@
 		return grouped;
 	});
 
-	let months = $derived(monthsInRange(start, end));
-	let monthIdx = $state(0);
-	// Initialwert aus den Props; danach frei wählbar. untrack vermeidet die Reaktivitäts-Warnung.
-	let selectedDay = $state(untrack(() => data.workation.startDate));
+	let weeks = $derived(weekStartsInRange(start, end));
+	let weekIdx = $state(0);
+	let weekStart = $derived(weeks[weekIdx] ?? weeks[0]);
+	let days = $derived(Array.from({ length: 7 }, (_, i) => addDaysISO(weekStart, i)));
 
-	let view = $derived(months[monthIdx] ?? months[0]);
-	let weeks = $derived(monthMatrix(view.year, view.month));
-	let selectedEntries = $derived(byDay[selectedDay] ?? []);
+	// Modal-Zustand fürs Hinzufügen (Slot-Klick)
+	let modal = $state<{ day: string; startTime: string; endTime: string } | null>(null);
 
 	function inRange(iso: string): boolean {
 		return iso >= start && iso <= end;
 	}
-	function selectDay(iso: string) {
-		if (inRange(iso)) selectedDay = iso;
+
+	function openSlot(day: string, hour: number) {
+		if (!data.isManager || !inRange(day)) return;
+		modal = {
+			day,
+			startTime: minutesToTime(hour * 60),
+			endTime: minutesToTime((hour + 1) * 60)
+		};
+	}
+
+	/** Zeitgebundene Einträge eines Tages mit Überlappungs-Spalten (Cluster-basiert). */
+	function layoutDay(day: string) {
+		const items = (byDay[day] ?? [])
+			.filter((e) => e.startTime)
+			.map((e) => ({
+				entry: e,
+				startMin: timeToMinutes(e.startTime as string),
+				endMin: e.endTime ? timeToMinutes(e.endTime) : timeToMinutes(e.startTime as string) + 60
+			}))
+			.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+		const out: { entry: (typeof items)[number]['entry']; startMin: number; endMin: number; col: number; cols: number }[] = [];
+		let cluster: typeof items = [];
+		let clusterEnd = -1;
+
+		const flush = () => {
+			if (cluster.length === 0) return;
+			const colEnds: number[] = [];
+			const placed = cluster.map((it) => {
+				let col = colEnds.findIndex((e) => e <= it.startMin);
+				if (col === -1) {
+					col = colEnds.length;
+					colEnds.push(it.endMin);
+				} else {
+					colEnds[col] = it.endMin;
+				}
+				return { it, col };
+			});
+			const cols = colEnds.length;
+			for (const { it, col } of placed) out.push({ ...it, col, cols });
+			cluster = [];
+			clusterEnd = -1;
+		};
+
+		for (const it of items) {
+			if (cluster.length && it.startMin >= clusterEnd) flush();
+			cluster.push(it);
+			clusterEnd = Math.max(clusterEnd, it.endMin);
+		}
+		flush();
+		return out;
+	}
+
+	function allDay(day: string) {
+		return (byDay[day] ?? []).filter((e) => !e.startTime);
+	}
+
+	function blockStyle(startMin: number, endMin: number, col: number, cols: number): string {
+		const top = ((Math.max(startMin, RANGE_MIN) - RANGE_MIN) / 60) * HOUR_PX;
+		const bottom = ((Math.min(endMin, RANGE_MAX) - RANGE_MIN) / 60) * HOUR_PX;
+		const height = Math.max(22, bottom - top);
+		const width = 100 / cols;
+		return `top:${top}px;height:${height}px;left:${col * width}%;width:${width}%;`;
 	}
 </script>
 
@@ -43,152 +116,155 @@
 	<title>{data.workation.name} · Tagesplan</title>
 </svelte:head>
 
-<div class="layout">
-	<!-- Kalender -->
-	<section class="card cal">
-		<header class="cal-head">
-			<button
-				class="ghost nav"
-				onclick={() => (monthIdx -= 1)}
-				disabled={monthIdx === 0}
-				aria-label="Vorheriger Monat"
-			>
-				<ChevronLeft size={18} />
-			</button>
-			<span class="month">{monthLabel(view.year, view.month)}</span>
-			<button
-				class="ghost nav"
-				onclick={() => (monthIdx += 1)}
-				disabled={monthIdx === months.length - 1}
-				aria-label="Nächster Monat"
-			>
-				<ChevronRight size={18} />
-			</button>
-		</header>
+<svelte:window onkeydown={(e) => e.key === 'Escape' && (modal = null)} />
 
-		<div class="weekdays">
-			{#each WEEKDAYS as wd (wd)}<span>{wd}</span>{/each}
-		</div>
+<section class="card cal">
+	<header class="wk-head">
+		<button class="ghost nav" onclick={() => (weekIdx -= 1)} disabled={weekIdx === 0} aria-label="Vorherige Woche">
+			<ChevronLeft size={18} />
+		</button>
+		<span class="wk-label">{formatDateRange(weekStart, addDaysISO(weekStart, 6))}</span>
+		<button class="ghost nav" onclick={() => (weekIdx += 1)} disabled={weekIdx === weeks.length - 1} aria-label="Nächste Woche">
+			<ChevronRight size={18} />
+		</button>
+	</header>
 
-		<div class="grid">
-			{#each weeks as week, wi (wi)}
-				{#each week as iso, di (di)}
-					{#if iso === null}
-						<span class="cell empty"></span>
-					{:else}
-						<button
-							type="button"
-							class="cell"
-							class:inrange={inRange(iso)}
-							class:selected={iso === selectedDay}
-							disabled={!inRange(iso)}
-							onclick={() => selectDay(iso)}
-						>
-							<span class="num">{dayOfMonth(iso)}</span>
-							{#if (byDay[iso] ?? []).length > 0}
-								<span class="marker" aria-hidden="true"></span>
-							{/if}
-						</button>
-					{/if}
-				{/each}
+	<!-- Tag-Köpfe -->
+	<div class="cols head-row">
+		<div class="gutter"></div>
+		{#each days as day (day)}
+			<div class="day-head" class:out={!inRange(day)}>
+				<span class="wd">{weekdayShort(day)}</span>
+				<span class="dn">{dayOfMonth(day)}</span>
+			</div>
+		{/each}
+	</div>
+
+	<!-- Ganztägig -->
+	{#if days.some((d) => allDay(d).length > 0)}
+		<div class="cols allday">
+			<div class="gutter"><span>ganztägig</span></div>
+			{#each days as day (day)}
+				<div class="allday-cell" class:out={!inRange(day)}>
+					{#each allDay(day) as e (e.id)}
+						<span class="chip-ev">{e.title}</span>
+					{/each}
+				</div>
 			{/each}
 		</div>
-	</section>
+	{/if}
 
-	<!-- Tagesdetail -->
-	<section class="detail">
-		{#key selectedDay}
-			<div in:fade={{ duration: 200 }}>
-				<h2>{formatDayLong(selectedDay)}</h2>
-
-				{#if selectedEntries.length === 0}
-					<p class="muted empty-day">Keine Einträge an diesem Tag.</p>
-				{:else}
-					<ul class="timeline">
-						{#each selectedEntries as entry (entry.id)}
-							<li>
-								<span class="bullet" aria-hidden="true"></span>
-								{#if entry.startTime}
-									<span class="time">
-										{formatTime(entry.startTime)}{#if entry.endTime}–{formatTime(entry.endTime)}{/if}
-									</span>
-								{:else}
-									<span class="time faint">ganztägig</span>
-								{/if}
-								<div class="body">
-									<span class="title">{entry.title}</span>
-									{#if entry.description}<p class="desc muted">{entry.description}</p>{/if}
-								</div>
-								{#if data.isManager}
-									<form method="POST" action="?/delete" use:enhance>
-										<input type="hidden" name="entryId" value={entry.id} />
-										<button class="ghost del" title="Löschen"><Trash2 size={15} /></button>
-									</form>
-								{/if}
-							</li>
-						{/each}
-					</ul>
-				{/if}
+	<!-- Zeitraster -->
+	<div class="grid-scroll">
+		<div class="cols grid" style:height="{slots.length * HOUR_PX}px">
+			<div class="gutter time-axis">
+				{#each hourLabels as h (h)}
+					<span class="hl" style:top="{(h - DAY_START) * HOUR_PX}px">{h}:00</span>
+				{/each}
 			</div>
-		{/key}
 
-		{#if data.isManager}
-			<form class="card add" method="POST" action="?/add" use:enhance>
-				<h3><Plus size={16} /> Eintrag hinzufügen</h3>
-				<input type="hidden" name="day" value={selectedDay} />
-				<div class="times">
-					<label>Von<input type="time" name="startTime" /></label>
-					<label>Bis<input type="time" name="endTime" /></label>
+			{#each days as day, di (day)}
+				<div class="day-col" class:out={!inRange(day)}>
+					{#each slots as h (h)}
+						<button
+							class="slot"
+							style:top="{(h - DAY_START) * HOUR_PX}px"
+							style:height="{HOUR_PX}px"
+							disabled={!data.isManager || !inRange(day)}
+							aria-label="{formatDate(day)}, {h}:00 – Eintrag hinzufügen"
+							onclick={() => openSlot(day, h)}
+						></button>
+					{/each}
+
+					{#each layoutDay(day) as p (p.entry.id)}
+						<div class="event" style={blockStyle(p.startMin, p.endMin, p.col, p.cols)}>
+							<span class="ev-time">{formatTime(p.entry.startTime)}</span>
+							<span class="ev-title">{p.entry.title}</span>
+							{#if data.isManager}
+								<form method="POST" action="?/delete" use:enhance>
+									<input type="hidden" name="entryId" value={p.entry.id} />
+									<button class="ev-del" title="Löschen"><Trash2 size={13} /></button>
+								</form>
+							{/if}
+						</div>
+					{/each}
+
+					{#if di === 0}
+						<!-- dezente Stundenlinien als Hintergrund nur einmal nötig pro Spalte; via slot-border -->
+					{/if}
 				</div>
-				<label>
-					Titel
-					<input name="title" placeholder="z. B. Coworking, Ausflug" />
-				</label>
-				<label>
-					Beschreibung (optional)
-					<textarea name="description" rows="2"></textarea>
-				</label>
-				{#if form?.message}
-					<p class="error">{form.message}</p>
-				{:else if form?.added}
-					<p class="success">Hinzugefügt ✓</p>
-				{/if}
-				<div>
-					<button>Hinzufügen</button>
+			{/each}
+		</div>
+	</div>
+
+	{#if data.isManager}
+		<p class="hint faint">Tipp: In einen freien Zeit-Slot klicken, um einen Eintrag hinzuzufügen.</p>
+	{/if}
+</section>
+
+<!-- Hinzufügen-Modal -->
+{#if modal}
+	<div
+		class="overlay"
+		role="presentation"
+		onclick={(e) => {
+			if (e.target === e.currentTarget) modal = null;
+		}}
+		transition:fade={{ duration: 150 }}
+	>
+		<div
+			class="modal card"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Eintrag hinzufügen"
+			tabindex="-1"
+			transition:scale={{ duration: 200, start: 0.96 }}
+		>
+			<div class="modal-head">
+				<h3>Neuer Eintrag · {formatDate(modal.day)}</h3>
+				<button class="ghost" onclick={() => (modal = null)} aria-label="Schließen"><X size={18} /></button>
+			</div>
+			<form
+				method="POST"
+				action="?/add"
+				use:enhance={() => {
+					return async ({ result, update }) => {
+						await update();
+						if (result.type === 'success') modal = null;
+					};
+				}}
+			>
+				<input type="hidden" name="day" value={modal.day} />
+				<div class="times">
+					<label>Von<input type="time" name="startTime" value={modal.startTime} /></label>
+					<label>Bis<input type="time" name="endTime" value={modal.endTime} /></label>
+				</div>
+				<label>Titel<input name="title" placeholder="z. B. Coworking, Ausflug" /></label>
+				<label>Beschreibung (optional)<textarea name="description" rows="2"></textarea></label>
+				{#if form?.message}<p class="error">{form.message}</p>{/if}
+				<div class="modal-actions">
+					<button>Speichern</button>
+					<button type="button" class="secondary" onclick={() => (modal = null)}>Abbrechen</button>
 				</div>
 			</form>
-		{/if}
-	</section>
-</div>
+		</div>
+	</div>
+{/if}
 
 <style>
-	.layout {
-		display: grid;
-		grid-template-columns: minmax(17rem, 22rem) 1fr;
-		gap: 1.2rem;
-		align-items: start;
-	}
-	@media (max-width: 720px) {
-		.layout {
-			grid-template-columns: 1fr;
-		}
-	}
-
-	/* Kalender */
 	.cal {
 		padding: 1.1rem;
 	}
-	.cal-head {
+	.wk-head {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 0.8rem;
+		margin-bottom: 0.9rem;
 	}
-	.month {
+	.wk-label {
 		font-family: var(--font-display);
-		font-size: 1.1rem;
+		font-size: 1.05rem;
 		font-weight: 560;
-		text-transform: capitalize;
 	}
 	.nav {
 		color: var(--ink-soft);
@@ -202,149 +278,196 @@
 	.nav:disabled {
 		opacity: 0.3;
 	}
-	.weekdays {
+
+	/* Spalten-Raster: Gutter + 7 Tage */
+	.cols {
 		display: grid;
-		grid-template-columns: repeat(7, 1fr);
-		gap: 0.2rem;
-		margin-bottom: 0.4rem;
+		grid-template-columns: 3.2rem repeat(7, minmax(5.5rem, 1fr));
 	}
-	.weekdays span {
-		text-align: center;
+	.gutter {
 		font-size: 0.7rem;
-		font-weight: 600;
 		color: var(--ink-faint);
+	}
+
+	.head-row .day-head {
+		text-align: center;
+		padding: 0.3rem 0;
+		display: flex;
+		flex-direction: column;
+		border-left: 1px solid var(--line);
+	}
+	.day-head .wd {
+		font-size: 0.72rem;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
+		color: var(--ink-faint);
 	}
-	.grid {
-		display: grid;
-		grid-template-columns: repeat(7, 1fr);
+	.day-head .dn {
+		font-family: var(--font-display);
+		font-size: 1.1rem;
+		font-weight: 560;
+	}
+	.day-head.out {
+		opacity: 0.4;
+	}
+
+	.allday {
+		border-top: 1px solid var(--line);
+		min-height: 2rem;
+	}
+	.allday .gutter {
+		display: flex;
+		align-items: center;
+	}
+	.allday-cell {
+		border-left: 1px solid var(--line);
+		padding: 0.2rem;
+		display: flex;
+		flex-wrap: wrap;
 		gap: 0.2rem;
 	}
-	.cell {
-		aspect-ratio: 1;
-		position: relative;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: none;
-		border: none;
-		border-radius: 10px;
-		box-shadow: none;
-		color: var(--ink-faint);
-		font-weight: 500;
-		font-size: 0.9rem;
-		cursor: default;
-		padding: 0;
+	.allday-cell.out {
+		background: rgba(0, 0, 0, 0.12);
 	}
-	.cell::after {
-		display: none;
-	}
-	.cell.empty {
-		visibility: hidden;
-	}
-	.cell.inrange {
-		color: var(--ink);
-		background: var(--glass);
-		cursor: pointer;
-	}
-	.cell.inrange:hover {
-		background: var(--glass-2);
-		transform: none;
-		filter: none;
-	}
-	.cell.selected {
-		color: #18120d;
-		background: linear-gradient(135deg, var(--coral), var(--coral-deep));
-		box-shadow: 0 6px 16px -7px rgba(255, 99, 71, 0.8);
-	}
-	.cell:disabled {
-		opacity: 0.45;
-	}
-	.marker {
-		position: absolute;
-		bottom: 5px;
-		left: 50%;
-		transform: translateX(-50%);
-		width: 5px;
-		height: 5px;
-		border-radius: 50%;
-		background: var(--aqua);
-	}
-	.cell.selected .marker {
-		background: #18120d;
+	.chip-ev {
+		font-size: 0.72rem;
+		padding: 0.1rem 0.4rem;
+		border-radius: 6px;
+		background: rgba(79, 224, 196, 0.18);
+		color: var(--aqua);
+		white-space: nowrap;
 	}
 
-	/* Detail */
-	.detail h2 {
-		text-transform: capitalize;
-		margin-bottom: 1rem;
+	.grid-scroll {
+		max-height: 62vh;
+		overflow: auto;
+		border-top: 1px solid var(--line);
+		margin-top: 0;
 	}
-	.empty-day {
-		padding: 1rem 0;
-	}
-	.timeline {
-		list-style: none;
-		padding: 0;
-		margin: 0 0 1.5rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.8rem;
-	}
-	.timeline li {
-		display: flex;
-		align-items: baseline;
-		gap: 0.7rem;
+	.grid {
 		position: relative;
-		padding-left: 1rem;
 	}
-	.bullet {
+	.time-axis {
+		position: relative;
+	}
+	.hl {
+		position: absolute;
+		right: 0.4rem;
+		transform: translateY(-50%);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.day-col {
+		position: relative;
+		border-left: 1px solid var(--line);
+	}
+	.day-col.out {
+		background: rgba(0, 0, 0, 0.12);
+	}
+
+	.slot {
 		position: absolute;
 		left: 0;
-		top: 0.5rem;
-		width: 7px;
-		height: 7px;
-		border-radius: 50%;
-		background: var(--coral);
-		box-shadow: 0 0 10px 1px rgba(255, 138, 92, 0.6);
+		right: 0;
+		background: none;
+		border: none;
+		border-top: 1px solid var(--line);
+		border-radius: 0;
+		box-shadow: none;
+		padding: 0;
+		cursor: pointer;
+		transition: background 0.15s var(--ease);
 	}
-	.time {
-		font-variant-numeric: tabular-nums;
-		color: var(--aqua);
-		font-weight: 600;
-		font-size: 0.88rem;
-		white-space: nowrap;
-		min-width: 6rem;
+	.slot::after {
+		display: none;
 	}
-	.body {
-		flex: 1;
+	.slot:hover:not(:disabled) {
+		background: rgba(255, 138, 92, 0.1);
 	}
-	.title {
-		font-weight: 600;
-	}
-	.desc {
-		margin: 0.15rem 0 0;
-		font-size: 0.9rem;
-	}
-	.del {
-		color: var(--ink-faint);
-	}
-	.del:hover {
-		color: var(--danger);
+	.slot:disabled {
+		cursor: default;
 	}
 
-	/* Add-Form */
-	.add {
+	.event {
+		position: absolute;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		padding: 3px 6px;
+		border-radius: 7px;
+		background: linear-gradient(135deg, rgba(255, 138, 92, 0.92), rgba(255, 99, 71, 0.92));
+		color: #1a0e08;
+		box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.5);
+		border: 1px solid rgba(255, 255, 255, 0.25);
+		z-index: 2;
+		font-size: 0.74rem;
+		line-height: 1.15;
+	}
+	.ev-time {
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+		opacity: 0.85;
+	}
+	.ev-title {
+		font-weight: 700;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.ev-del {
+		position: absolute;
+		top: 2px;
+		right: 2px;
+		padding: 1px;
+		background: rgba(0, 0, 0, 0.18);
+		border: none;
+		border-radius: 5px;
+		color: #1a0e08;
+		opacity: 0;
+		box-shadow: none;
+		transition: opacity 0.15s;
+	}
+	.ev-del::after {
+		display: none;
+	}
+	.event:hover .ev-del {
+		opacity: 1;
+	}
+
+	.hint {
+		font-size: 0.78rem;
+		margin: 0.8rem 0 0;
+	}
+
+	/* Modal */
+	.overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 100;
+		background: rgba(6, 12, 18, 0.55);
+		backdrop-filter: blur(4px);
+		display: grid;
+		place-items: center;
+		padding: 1rem;
+	}
+	.modal {
+		width: 100%;
+		max-width: 24rem;
+		padding: 1.4rem;
+	}
+	.modal-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 1rem;
+	}
+	.modal-head h3 {
+		margin: 0;
+	}
+	.modal form {
 		display: flex;
 		flex-direction: column;
 		gap: 0.7rem;
-	}
-	.add h3 {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-		margin: 0;
-		color: var(--ink-soft);
 	}
 	.times {
 		display: flex;
@@ -352,5 +475,19 @@
 	}
 	.times label {
 		flex: 1;
+	}
+	.modal-actions {
+		display: flex;
+		gap: 0.6rem;
+		margin-top: 0.3rem;
+	}
+
+	@media (max-width: 640px) {
+		.grid-scroll {
+			overflow-x: auto;
+		}
+		.cols {
+			min-width: 42rem;
+		}
 	}
 </style>
